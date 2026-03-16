@@ -3,15 +3,9 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 import api from '../utils/api'
 
-// Configure axios base URL
-// If VITE_API_URL is set, use it; otherwise use '/api' for Vite proxy
-const API_BASE_URL = import.meta.env.VITE_API_URL || ''
-if (API_BASE_URL) {
-  axios.defaults.baseURL = API_BASE_URL
-} else {
-  // Use relative paths when using Vite proxy
-  axios.defaults.baseURL = ''
-}
+// Configure axios base URL to match VITE_API_URL used by `api`
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+axios.defaults.baseURL = API_BASE_URL
 
 const AuthContext = createContext()
 
@@ -54,7 +48,7 @@ export const AuthProvider = ({ children }) => {
 
   const loadUser = async () => {
     try {
-      const res = await axios.get('/api/users/me')
+      const res = await api.get('/users/me')
       if (res.data.success && res.data.user) {
         setUser(res.data.user)
       } else {
@@ -72,7 +66,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (formData) => {
     try {
-      const res = await axios.post('/api/users/register', formData)
+      const res = await api.post('/users/register', formData)
       if (res.data.success && res.data.token) {
         setAuthToken(res.data.token)
         setUser(res.data.user)
@@ -89,8 +83,8 @@ export const AuthProvider = ({ children }) => {
         // Server responded with error
         message = error.response.data?.message || `Server error: ${error.response.status}`
       } else if (error.request) {
-        // Request made but no response (backend not running or network issue)
-        message = 'Cannot connect to server. Please make sure the backend server is running on port 5000.'
+        // Request made but no response (backend not reachable or network issue)
+        message = 'Cannot connect to server. Please check your internet connection or backend URL.'
       } else {
         // Something else happened
         message = error.message || 'Registration failed'
@@ -103,7 +97,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const res = await axios.post('/api/users/login', { email, password })
+      const res = await api.post('/users/login', { email, password })
       if (res.data.success && res.data.token) {
         setAuthToken(res.data.token)
         setUser(res.data.user)
@@ -120,8 +114,8 @@ export const AuthProvider = ({ children }) => {
         // Server responded with error
         message = error.response.data?.message || `Server error: ${error.response.status}`
       } else if (error.request) {
-        // Request made but no response (backend not running or network issue)
-        message = 'Cannot connect to server. Please make sure the backend server is running on port 5000.'
+        // Request made but no response (backend not reachable or network issue)
+        message = 'Cannot connect to server. Please check your internet connection or backend URL.'
       } else {
         // Something else happened
         message = error.message || 'Login failed'
@@ -140,7 +134,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (formData) => {
     try {
-      const res = await axios.put('/api/users/me', formData)
+      const res = await api.put('/users/me', formData)
       setUser(res.data.user)
       toast.success('Profile updated successfully!')
       return { success: true }

@@ -139,8 +139,9 @@ const Orders = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <button
                     onClick={() => {
+                      const base = import.meta.env.VITE_API_URL || '/api'
                       const link = document.createElement('a')
-                      link.href = `/api/orders/${order._id}/invoice`
+                      link.href = `${base}/orders/${order._id}/invoice`
                       link.download = `invoice-${order.orderNumber}.pdf`
                       link.click()
                     }}
