@@ -1,11 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import axios from 'axios'
 import toast from 'react-hot-toast'
 import api from '../utils/api'
-
-// Configure axios base URL to match VITE_API_URL used by `api`
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
-axios.defaults.baseURL = API_BASE_URL
 
 const AuthContext = createContext()
 
@@ -25,11 +20,9 @@ export const AuthProvider = ({ children }) => {
   const setAuthToken = (token) => {
     if (token) {
       const authHeader = `Bearer ${token}`
-      axios.defaults.headers.common['Authorization'] = authHeader
       api.defaults.headers.common['Authorization'] = authHeader
       localStorage.setItem('token', token)
     } else {
-      delete axios.defaults.headers.common['Authorization']
       delete api.defaults.headers.common['Authorization']
       localStorage.removeItem('token')
     }
