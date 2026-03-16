@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-premium-light text-gray-900 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  ::selection {
+    background: rgba(255, 215, 0, 0.35);
+  }
+
+  :focus-visible {
+    outline: none;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .page-section {
+    @apply py-12 sm:py-16;
+  }
+
+  .page-title {
+    @apply text-4xl md:text-5xl font-serif font-bold text-[#7f1d4a];
+  }
+
+  .page-subtitle {
+    @apply text-sm uppercase tracking-[0.25em] text-[#7f1d4a]/60;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-full font-semibold transition-all duration-200
+      disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-4 focus-visible:ring-gold-200;
+  }
+
+  .btn-primary {
+    @apply btn bg-gold-500 hover:bg-gold-600 text-white py-2.5 px-6 shadow-sm hover:shadow-soft hover:-translate-y-0.5 active:translate-y-0;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 py-2.5 px-6 hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-gray-100 text-gray-900 py-2 px-4;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 hover:bg-red-700 text-white py-2.5 px-6 hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .btn-sm {
+    @apply py-2 px-4 text-sm;
+  }
+
+  .btn-lg {
+    @apply py-3.5 px-8 text-lg;
+  }
+  
+  .card {
+    @apply bg-white rounded-2xl shadow-soft overflow-hidden transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply hover:shadow-lift hover:-translate-y-0.5;
+  }
+
+  .card-pad {
+    @apply p-6 sm:p-8;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-2.5 border border-gray-300 rounded-full bg-white/80
+      focus-visible:ring-4 focus-visible:ring-gold-200 focus-visible:border-gold-500
+      placeholder:text-gray-400 transition-all duration-200;
+  }
+
+  .input-field-square {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-2xl bg-white/80
+      focus-visible:ring-4 focus-visible:ring-gold-200 focus-visible:border-gold-500
+      placeholder:text-gray-400 transition-all duration-200;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-700 mb-2;
+  }
+
+  .help-text {
+    @apply text-xs text-gray-500 mt-2;
+  }
+
+  .divider {
+    @apply border-t border-gray-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
+  }
+
+  .badge-gold {
+    @apply badge bg-gold-100 text-gold-800;
+  }
+
+  .badge-muted {
+    @apply badge bg-gray-100 text-gray-700;
+  }
+
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded-md;
+  }
+
+  .bg-gift-pattern {
+    background-image: radial-gradient(circle at 20px 20px, rgba(127, 29, 74, 0.08) 2px, transparent 0);
+    background-size: 60px 60px;
+  }
+}
+
+/* Ensure dropdowns are visible */
+nav .relative {
+  overflow: visible !important;
+}
+
+nav .absolute {
+  position: absolute !important;
+  z-index: 9999 !important;
+}
+
