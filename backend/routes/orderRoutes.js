@@ -2,12 +2,11 @@ import express from 'express';
 import { body } from 'express-validator';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
-import { protect } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 import { calculateProductPrice, calculateOrderTotal } from '../utils/priceCalculator.js';
 import { getCurrentGoldRates } from '../utils/goldRateService.js';
 import { generateInvoicePDF } from '../utils/pdfGenerator.js';
 import GoldRate from '../models/GoldRate.js';
-import fs from 'fs';
 import Cart from '../models/Cart.js';
 
 const router = express.Router();
@@ -20,7 +19,7 @@ router.post('/', protect, [
   body('shippingAddress').isObject().withMessage('Shipping address is required')
 ], async (req, res, next) => {
   try {
-    const { items, shippingAddress, notes } = req.body;
+    const { items, shippingAddress, notes, paymentMethod, paymentStatus } = req.body;
 
     // Get current gold rates
     const goldRates = await getCurrentGoldRates(GoldRate);
@@ -70,8 +69,9 @@ router.post('/', protect, [
       total: totals.total,
       shippingAddress,
       notes,
-      status: 'pending',
-      paymentStatus: 'pending'
+      status: paymentStatus === 'paid' ? 'confirmed' : 'pending',
+      paymentStatus: paymentStatus || 'pending',
+      paymentMethod: paymentMethod || 'other'
     });
 
     // Update product stock
@@ -180,12 +180,8 @@ router.get('/:id/invoice', protect, async (req, res, next) => {
 // @route   PUT /api/orders/:id/status
 // @desc    Update order status (Admin/Staff only)
 // @access  Private/Admin
-router.put('/:id/status', protect, async (req, res, next) => {
+router.put('/:id/status', protect, authorize('admin', 'staff'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'staff') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const { status, paymentStatus } = req.body;
 
     const order = await Order.findByIdAndUpdate(

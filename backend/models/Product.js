@@ -19,7 +19,7 @@ const productSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Rings', 'Necklaces', 'Earrings', 'Bracelets', 'Bangles', 'Pendants', 'Chains', 'Sets']
+    enum: ['Rings', 'Necklaces', 'Earrings', 'Bracelets', 'Bangles', 'Pendants', 'Chains', 'Sets', 'Anklets']
   },
   metal: {
     type: String,
@@ -77,6 +77,11 @@ const productSchema = new mongoose.Schema({
   badges: {
     type: [String],
     default: [] // e.g., ['New', 'Bestseller', 'Limited Stock', 'Made to Order']
+  },
+  fixedPrice: {
+    type: Number,
+    min: 0,
+    default: 0 // Used for Diamond or non-metal items where price is not weight-based
   },
   images: [{
     url: {

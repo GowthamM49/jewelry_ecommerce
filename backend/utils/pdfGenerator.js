@@ -102,6 +102,10 @@ export const generateInvoicePDF = (order, user) => {
         .text('This is a computer-generated invoice.', { align: 'center' });
       
       doc.end();
+
+      stream.on('finish', () => {
+        resolve({ filepath, filename });
+      });
       
       stream.on('error', (error) => {
         reject(error);

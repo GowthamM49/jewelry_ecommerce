@@ -1,69 +1,21 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useCart } from '../../context/CartContext'
-import api from '../../utils/api'
+import { useWishlist } from '../../context/WishlistContext'
 
 const Navbar = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth()
   const { getCartItemsCount } = useCart()
+  const { items: wishlistItems } = useWishlist()
   const navigate = useNavigate()
   const [showTopBar, setShowTopBar] = useState(true)
   const [activeDropdown, setActiveDropdown] = useState(null)
-  const [goldRates, setGoldRates] = useState(null)
-  const [showGoldRatePopup, setShowGoldRatePopup] = useState(false)
 
   const handleLogout = () => {
     logout()
     navigate('/')
   }
-
-  // Gold subcategories with images for dropdown
-  const goldCategories = [
-    { name: 'Rings', image: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=200&h=200&fit=crop' },
-    { name: 'Earrings', image: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=200&h=200&fit=crop' },
-    { name: 'Pendants', image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=200&h=200&fit=crop' },
-    { name: 'Chains', image: 'https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=200&h=200&fit=crop' },
-    { name: 'Bangles', image: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=200&h=200&fit=crop' },
-    { name: 'Bracelets', image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=200&h=200&fit=crop' },
-    { name: 'Necklaces', image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=200&h=200&fit=crop' },
-    { name: 'Sets', image: 'https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?w=200&h=200&fit=crop' }
-  ]
-  const silverCategories = ['Coins & Bars', 'Articles', 'Jewelry', 'Accessories']
-  const jewelleryCategories = ['Earring', 'Pendant', 'Ring', 'Chain', 'Necklace', 'Mangalsutra', 'Bangle', 'Bracelet', 'Nosepin', 'Accessories']
-
-  // Fetch gold rates
-  useEffect(() => {
-    const fetchGoldRates = async () => {
-      try {
-        const res = await api.get('/gold-rate')
-        if (res.data && res.data.rates) {
-          setGoldRates(res.data.rates)
-        } else {
-          // Set default rates if API doesn't return rates
-          setGoldRates({
-            '22K': 6500,
-            '18K': 5317,
-            '14K': 4134,
-            '24K': 7091
-          })
-        }
-      } catch (error) {
-        console.error('Error fetching gold rates:', error)
-        // Set default rates on error
-        setGoldRates({
-          '22K': 6500,
-          '18K': 5317,
-          '14K': 4134,
-          '24K': 7091
-        })
-      }
-    }
-    fetchGoldRates()
-    // Refresh rates every 5 minutes
-    const interval = setInterval(fetchGoldRates, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
 
   return (
     <>
@@ -105,16 +57,24 @@ const Navbar = () => {
 
             {/* Search Bar */}
             <div className="hidden md:flex flex-1 max-w-md mx-8">
-              <div className="relative w-full">
+              <form
+                className="relative w-full"
+                onSubmit={e => {
+                  e.preventDefault()
+                  const q = e.target.elements.search.value.trim()
+                  if (q) navigate(`/products?search=${encodeURIComponent(q)}`)
+                }}
+              >
                 <input
                   type="text"
+                  name="search"
                   placeholder="Search"
                   className="w-full px-4 py-2 pl-10 pr-4 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
                 />
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-              </div>
+              </form>
             </div>
 
             {/* Right Side */}
@@ -155,12 +115,17 @@ const Navbar = () => {
               )}
 
               {/* Wishlist */}
-              <button className="hidden lg:flex items-center space-x-1 text-gray-700 hover:text-[#7f1d4a] transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <Link to="/wishlist" className="hidden lg:flex items-center space-x-1 text-gray-700 hover:text-[#7f1d4a] transition-colors relative">
+                <svg className="w-4 h-4" fill={wishlistItems.length > 0 ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
                 <span className="text-sm">Wishlist</span>
-              </button>
+                {wishlistItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-semibold">
+                    {wishlistItems.length}
+                  </span>
+                )}
+              </Link>
 
               {/* Cart */}
               <Link to="/cart" className="relative flex items-center space-x-1 text-gray-700 hover:text-[#7f1d4a] transition-colors">
@@ -190,7 +155,7 @@ const Navbar = () => {
                   onMouseLeave={() => setActiveDropdown(null)}
                 >
                   <Link
-                    to="/products?metal=Gold"
+                    to="/gold"
                     className={`px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap block ${
                       activeDropdown === 'gold' ? 'text-[#7f1d4a]' : 'text-gray-700 hover:text-[#7f1d4a]'
                     }`}
@@ -198,37 +163,19 @@ const Navbar = () => {
                     GOLD
                   </Link>
                   {activeDropdown === 'gold' && (
-                    <div 
-                      className="absolute top-full left-0 mt-0 w-80 bg-white shadow-2xl border-2 border-gray-300 rounded-lg py-4"
-                      style={{ 
-                        display: 'block',
-                        zIndex: 9999,
-                        position: 'absolute'
-                      }}
+                    <div
+                      className="absolute top-full left-0 mt-0 w-48 bg-white shadow-2xl border-2 border-gray-300 rounded-lg py-3"
+                      style={{ display: 'block', zIndex: 9999, position: 'absolute' }}
                       onMouseEnter={() => setActiveDropdown('gold')}
                       onMouseLeave={() => setActiveDropdown(null)}
                     >
-                      <div className="grid grid-cols-2 gap-2">
-                        {goldCategories.map((cat) => (
-                          <Link
-                            key={cat.name}
-                            to={`/products?metal=Gold&category=${cat.name}`}
-                            className="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gold-50 transition-colors group"
-                            onClick={() => setActiveDropdown(null)}
-                          >
-                            <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                              <img
-                                src={cat.image}
-                                alt={cat.name}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                              />
-                            </div>
-                            <span className="text-sm font-medium text-gray-700 group-hover:text-[#7f1d4a] transition-colors">
-                              {cat.name}
-                            </span>
-                          </Link>
-                        ))}
-                      </div>
+                      {['Chains', 'Rings', 'Bangles', 'Earrings'].map(cat => (
+                        <Link key={cat} to={`/gold?category=${cat}`}
+                          className="block px-5 py-2.5 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                          onClick={() => setActiveDropdown(null)}>
+                          {cat}
+                        </Link>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -240,7 +187,7 @@ const Navbar = () => {
                   onMouseLeave={() => setActiveDropdown(null)}
                 >
                   <Link
-                    to="/products?metal=Silver"
+                    to="/silver"
                     className={`px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap block ${
                       activeDropdown === 'silver' ? 'text-[#7f1d4a]' : 'text-gray-700 hover:text-[#7f1d4a]'
                     }`}
@@ -248,23 +195,16 @@ const Navbar = () => {
                     SILVER
                   </Link>
                   {activeDropdown === 'silver' && (
-                    <div 
-                      className="absolute top-full left-0 mt-0 w-56 bg-white shadow-2xl border-2 border-gray-300 rounded-lg py-3"
-                      style={{ 
-                        display: 'block',
-                        zIndex: 9999,
-                        position: 'absolute'
-                      }}
+                    <div
+                      className="absolute top-full left-0 mt-0 w-48 bg-white shadow-2xl border-2 border-gray-300 rounded-lg py-3"
+                      style={{ display: 'block', zIndex: 9999, position: 'absolute' }}
                       onMouseEnter={() => setActiveDropdown('silver')}
                       onMouseLeave={() => setActiveDropdown(null)}
                     >
-                      {silverCategories.map((cat) => (
-                        <Link
-                          key={cat}
-                          to={`/products?metal=Silver&category=${cat}`}
-                          className="block px-5 py-2.5 text-sm text-gray-700 hover:bg-gold-50 hover:text-[#7f1d4a] transition-colors"
-                          onClick={() => setActiveDropdown(null)}
-                        >
+                      {['Rings', 'Chains', 'Kada', 'Bracelets', 'Anklets'].map(cat => (
+                        <Link key={cat} to={`/silver?category=${cat}`}
+                          className="block px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+                          onClick={() => setActiveDropdown(null)}>
                           {cat}
                         </Link>
                       ))}
@@ -297,7 +237,7 @@ const Navbar = () => {
                       onMouseEnter={() => setActiveDropdown('jewellery')}
                       onMouseLeave={() => setActiveDropdown(null)}
                     >
-                      {jewelleryCategories.map((cat) => (
+                      {['Rings', 'Earrings', 'Pendants', 'Chains', 'Necklaces', 'Bangles', 'Bracelets', 'Sets'].map((cat) => (
                         <Link
                           key={cat}
                           to={`/products?category=${cat}`}
@@ -311,74 +251,15 @@ const Navbar = () => {
                   )}
                 </div>
 
-                <Link to="/collections" className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-[#7f1d4a] transition-colors whitespace-nowrap">
+                <Link to="/collections" className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-[#7f1d4a] transition-colors whitespace-nowrap hidden">
                   COLLECTIONS
                 </Link>
-                <Link to="/gift-cards" className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-[#7f1d4a] transition-colors whitespace-nowrap">
+                <Link to="/gift-cards" className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-[#7f1d4a] transition-colors whitespace-nowrap hidden">
                   GIFT CARDS
                 </Link>
-                {/* GOLD RATE with Popup */}
-                <div
-                  className="relative"
-                  onMouseEnter={() => setShowGoldRatePopup(true)}
-                  onMouseLeave={() => setShowGoldRatePopup(false)}
-                >
-                  <Link 
-                    to="/gold-rate" 
-                    className={`px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap block ${
-                      showGoldRatePopup ? 'text-[#7f1d4a]' : 'text-gray-700 hover:text-[#7f1d4a]'
-                    }`}
-                  >
-                    GOLD RATE
-                  </Link>
-                  {showGoldRatePopup && (
-                    <div 
-                      className="absolute top-full right-0 mt-0 w-72 bg-white shadow-2xl border-2 border-gray-300 rounded-lg py-4 px-5"
-                      style={{ 
-                        display: 'block',
-                        zIndex: 9999,
-                        position: 'absolute'
-                      }}
-                      onMouseEnter={() => setShowGoldRatePopup(true)}
-                      onMouseLeave={() => setShowGoldRatePopup(false)}
-                    >
-                      <h3 className="text-lg font-bold text-[#7f1d4a] mb-3 text-center">Today's Gold Rate</h3>
-                      {goldRates ? (
-                        <div className="space-y-2 mb-3">
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <span className="text-sm font-semibold text-gray-700">22 KT(916)</span>
-                            <span className="text-sm font-bold text-[#7f1d4a]">₹ {goldRates['22K']?.toLocaleString() || '0'}/g</span>
-                          </div>
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <span className="text-sm font-semibold text-gray-700">18 KT(750)</span>
-                            <span className="text-sm font-bold text-[#7f1d4a]">₹ {goldRates['18K']?.toLocaleString() || '0'}/g</span>
-                          </div>
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                            <span className="text-sm font-semibold text-gray-700">14 KT(585)</span>
-                            <span className="text-sm font-bold text-[#7f1d4a]">₹ {goldRates['14K']?.toLocaleString() || '0'}/g</span>
-                          </div>
-                          {goldRates['24K'] && (
-                            <div className="flex justify-between items-center py-2">
-                              <span className="text-sm font-semibold text-gray-700">24 KT(999)</span>
-                              <span className="text-sm font-bold text-[#7f1d4a]">₹ {goldRates['24K']?.toLocaleString() || '0'}/g</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-center py-4 text-gray-500 text-sm">Loading rates...</div>
-                      )}
-                      <p className="text-xs text-gray-600 text-center mt-3 pt-3 border-t border-gray-200">
-                        Updated on: {new Date().toLocaleDateString('en-IN', { 
-                          day: '2-digit', 
-                          month: '2-digit', 
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <Link to="/gold-rate" className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-[#7f1d4a] transition-colors whitespace-nowrap block">
+                  GOLD RATE
+                </Link>
               </div>
             </div>
           </div>

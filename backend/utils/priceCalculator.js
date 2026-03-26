@@ -11,8 +11,8 @@ export const calculateProductPrice = async (product, goldRate, gstRate = 3) => {
     const rate = goldRate[product.purity] || goldRate['22K'] || 0;
     basePrice = product.weight * rate;
   } else if (product.metal === 'Silver' && product.purity !== 'NA') {
-    // Silver rate (mock - in production, fetch from API)
-    const silverRate = 80; // per gram
+    // Use Silver rate from DB (passed in goldRate map as 'Silver' key)
+    const silverRate = goldRate['Silver'] || goldRate['925'] || 96; // fallback ₹96/g
     basePrice = product.weight * silverRate;
   } else if (product.metal === 'Platinum' && product.purity !== 'NA') {
     // Platinum rate (mock)
@@ -51,16 +51,16 @@ export const calculateProductPrice = async (product, goldRate, gstRate = 3) => {
 };
 
 export const calculateOrderTotal = (items) => {
-  const subtotal = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
-  const gst = items.reduce((sum, item) => {
-    const itemGst = (item.totalPrice * 3) / 100; // 3% GST
-    return sum + itemGst;
-  }, 0);
-  const total = subtotal + gst;
+  // totalPrice per item already includes GST (from calculateProductPrice)
+  // So order total = sum of all item totalPrices
+  const total = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+  // Back-calculate subtotal and gst for display purposes (3% GST)
+  const subtotal = Math.round((total / 1.03) * 100) / 100;
+  const gst = Math.round((total - subtotal) * 100) / 100;
 
   return {
-    subtotal: Math.round(subtotal * 100) / 100,
-    gst: Math.round(gst * 100) / 100,
+    subtotal,
+    gst,
     total: Math.round(total * 100) / 100
   };
 };

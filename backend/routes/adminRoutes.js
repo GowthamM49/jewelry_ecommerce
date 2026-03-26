@@ -3,7 +3,7 @@ import fs from 'fs';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
-import { protect } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 import { generateSalesReportPDF, generateInventoryReportPDF, generateUserReportPDF } from '../utils/pdfGenerator.js';
 
 const router = express.Router();
@@ -14,12 +14,8 @@ router.use(protect);
 // @route   GET /api/admin/stats
 // @desc    Get dashboard statistics
 // @access  Private/Admin
-router.get('/stats', async (req, res, next) => {
+router.get('/stats', authorize('admin', 'staff'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'staff') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const totalProducts = await Product.countDocuments({ isActive: true });
     const totalOrders = await Order.countDocuments();
     const totalUsers = await User.countDocuments({ role: 'customer' });
@@ -52,12 +48,8 @@ router.get('/stats', async (req, res, next) => {
 // @route   GET /api/admin/orders
 // @desc    Get all orders (Admin view)
 // @access  Private/Admin
-router.get('/orders', async (req, res, next) => {
+router.get('/orders', authorize('admin', 'staff'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'staff') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const { status, page = 1, limit = 20 } = req.query;
     const query = status ? { status } : {};
 
@@ -89,12 +81,8 @@ router.get('/orders', async (req, res, next) => {
 // @route   GET /api/admin/users
 // @desc    Get all users
 // @access  Private/Admin
-router.get('/users', async (req, res, next) => {
+router.get('/users', authorize('admin'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const users = await User.find()
       .select('-password')
       .sort({ createdAt: -1 });
@@ -111,12 +99,8 @@ router.get('/users', async (req, res, next) => {
 // @route   GET /api/admin/reports/sales
 // @desc    Generate sales report
 // @access  Private/Admin
-router.get('/reports/sales', async (req, res, next) => {
+router.get('/reports/sales', authorize('admin', 'staff'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'staff') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const { startDate, endDate } = req.query;
     
     if (!startDate || !endDate) {
@@ -155,12 +139,8 @@ router.get('/reports/sales', async (req, res, next) => {
 // @route   GET /api/admin/reports/inventory
 // @desc    Generate inventory report
 // @access  Private/Admin
-router.get('/reports/inventory', async (req, res, next) => {
+router.get('/reports/inventory', authorize('admin', 'staff'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'staff') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const products = await Product.find({ isActive: true })
       .sort({ category: 1, name: 1 });
 
@@ -185,12 +165,8 @@ router.get('/reports/inventory', async (req, res, next) => {
 // @route   GET /api/admin/reports/users
 // @desc    Generate user report
 // @access  Private/Admin
-router.get('/reports/users', async (req, res, next) => {
+router.get('/reports/users', authorize('admin'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const users = await User.find()
       .select('-password')
       .sort({ createdAt: -1 });

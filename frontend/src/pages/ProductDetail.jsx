@@ -61,9 +61,10 @@ const ProductDetail = () => {
             onClick={() => setLightboxOpen(true)}
           >
             <img
-              src={product.images?.[selectedImage]?.url || 'https://via.placeholder.com/600'}
+              src={product.images?.[selectedImage]?.url || 'https://placehold.co/600x600/f5f0eb/b8860b?text=Jewelry'}
               alt={product.name}
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+              onError={(e) => { e.target.src = 'https://placehold.co/600x600/f5f0eb/b8860b?text=Jewelry' }}
             />
           </div>
           {product.images && product.images.length > 1 && (

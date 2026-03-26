@@ -11,6 +11,7 @@ import orderRoutes from './routes/orderRoutes.js';
 import goldRateRoutes from './routes/goldRateRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
+import wishlistRoutes from './routes/wishlistRoutes.js';
 import GoldRate from './models/GoldRate.js';
 import { updateGoldRatesDaily } from './utils/goldRateService.js';
 
@@ -19,7 +20,6 @@ dotenv.config();
 // Validate required environment variables
 const requiredEnvVars = ['JWT_SECRET', 'MONGODB_URI'];
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
-
 if (missingEnvVars.length > 0) {
   console.error('❌ Missing required environment variables:');
   missingEnvVars.forEach(envVar => {
@@ -38,8 +38,19 @@ const app = express();
 
 // Security middleware
 app.use(helmet());
+
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map(o => o.trim());
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Render health checks)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Return false instead of throwing — avoids 500, sends proper 403
+    return callback(null, false);
+  },
   credentials: true
 }));
 
@@ -59,16 +70,16 @@ app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/gold-rate', goldRateRoutes);
 app.use('/api/admin', adminRoutes);
-
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, _req, res, _next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({
     message: err.message || 'Internal Server Error',
@@ -111,8 +122,8 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/jewelry_e
     
     console.log(`📅 Gold rate auto-update scheduled: Daily at 9:00 AM IST (cron: ${updateSchedule})`);
     
-    // Also update rates on server startup if not updated today
-    updateGoldRatesDaily(GoldRate).then(result => {
+    // Update rates on server startup — force fetch if rates are from seed/manual source
+    updateGoldRatesDaily(GoldRate, { forceIfManual: true }).then(result => {
       if (result.success && !result.skipped) {
         console.log('✅ Initial gold rate update completed on server startup');
       } else if (result.skipped) {

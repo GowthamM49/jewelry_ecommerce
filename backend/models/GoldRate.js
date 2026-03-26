@@ -4,7 +4,7 @@ const goldRateSchema = new mongoose.Schema({
   purity: {
     type: String,
     required: true,
-    enum: ['22K', '18K', '14K', '24K']
+    enum: ['22K', '18K', '14K', '24K', 'Silver']
   },
   ratePerGram: {
     type: Number,

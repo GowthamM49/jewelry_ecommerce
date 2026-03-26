@@ -1,22 +1,12 @@
 import express from 'express';
-import { body, query, param } from 'express-validator';
+import { body } from 'express-validator';
 import Product from '../models/Product.js';
-import { protect } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 import { calculateProductPrice } from '../utils/priceCalculator.js';
 import { getCurrentGoldRates } from '../utils/goldRateService.js';
 import GoldRate from '../models/GoldRate.js';
 
 const router = express.Router();
-
-// Validation middleware
-const validateProduct = [
-  body('name').trim().notEmpty().withMessage('Product name is required'),
-  body('category').isIn(['Rings', 'Necklaces', 'Earrings', 'Bracelets', 'Bangles', 'Pendants', 'Chains', 'Sets']),
-  body('metal').isIn(['Gold', 'Silver', 'Platinum', 'Diamond']),
-  body('purity').isIn(['22K', '18K', '14K', '24K', '925', '999', 'NA']),
-  body('weight').isFloat({ min: 0 }).withMessage('Weight must be a positive number'),
-  body('makingCharges').isFloat({ min: 0 }).withMessage('Making charges must be a positive number')
-];
 
 // @route   GET /api/products
 // @desc    Get all products with filters
@@ -39,27 +29,43 @@ router.get('/', async (req, res, next) => {
       limit = 12
     } = req.query;
 
-    const query = { isActive: true };
+    const dbQuery = { isActive: true };
 
-    if (category) query.category = category;
-    if (metal) query.metal = metal;
-    if (purity) query.purity = purity;
-    if (occasion) query.occasion = occasion;
-    if (style) query.style = style;
-    if (minWeight) query.weight = { ...(query.weight || {}), $gte: Number(minWeight) };
-    if (maxWeight) query.weight = { ...(query.weight || {}), $lte: Number(maxWeight) };
+    if (category) dbQuery.category = category;
+    if (metal) dbQuery.metal = metal;
+    if (purity) dbQuery.purity = purity;
+    // Exclude products with occasion='NA' when filtering by occasion
+    if (occasion) dbQuery.occasion = occasion;
+    if (style) dbQuery.style = style;
+    if (minWeight) dbQuery.weight = { ...(dbQuery.weight || {}), $gte: Number(minWeight) };
+    if (maxWeight) dbQuery.weight = { ...(dbQuery.weight || {}), $lte: Number(maxWeight) };
+
+    // Text search — regex is reliable without requiring a MongoDB text index
     if (search) {
-      query.$text = { $search: search };
+      dbQuery.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { tags: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } }
+      ];
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const products = await Product.find(query)
+    // DB-level sort (for fields that exist in the schema)
+    let dbSort = { createdAt: -1 }; // default: newest
+    if (sort === 'price_asc' || sort === 'price_desc') {
+      dbSort = { createdAt: -1 }; // price sort done after price calculation below
+    } else if (sort === 'bestseller') {
+      dbSort = { createdAt: -1 }; // badge sort done after price calculation below
+    }
+
+    const products = await Product.find(dbQuery)
       .skip(skip)
       .limit(parseInt(limit))
-      .sort(sort === 'newest' ? { createdAt: -1 } : { createdAt: -1 });
+      .sort(dbSort);
 
-    const total = await Product.countDocuments(query);
+    const total = await Product.countDocuments(dbQuery);
 
     // Get gold rates for price calculation
     const goldRates = await getCurrentGoldRates(GoldRate);
@@ -166,12 +172,8 @@ router.get('/barcode/:productId', async (req, res, next) => {
 // @route   POST /api/products
 // @desc    Create new product (Admin only)
 // @access  Private/Admin
-router.post('/', protect, async (req, res, next) => {
+router.post('/', protect, authorize('admin', 'staff'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'staff') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const productData = {
       ...req.body,
       images: req.body.images || []
@@ -195,12 +197,8 @@ router.post('/', protect, async (req, res, next) => {
 // @route   PUT /api/products/:id
 // @desc    Update product (Admin only)
 // @access  Private/Admin
-router.put('/:id', protect, async (req, res, next) => {
+router.put('/:id', protect, authorize('admin', 'staff'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'staff') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const product = await Product.findByIdAndUpdate(
       req.params.id,
       { ...req.body, updatedAt: Date.now() },
@@ -223,12 +221,8 @@ router.put('/:id', protect, async (req, res, next) => {
 // @route   DELETE /api/products/:id
 // @desc    Delete product (Admin only)
 // @access  Private/Admin
-router.delete('/:id', protect, async (req, res, next) => {
+router.delete('/:id', protect, authorize('admin', 'staff'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const product = await Product.findByIdAndUpdate(
       req.params.id,
       { isActive: false },

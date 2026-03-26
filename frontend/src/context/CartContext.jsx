@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../utils/api'
 import { useAuth } from './AuthContext'
 
@@ -14,15 +14,14 @@ export const useCart = () => {
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([])
-  const { isAuthenticated } = useAuth()
-  const didInit = useRef(false)
+  const { isAuthenticated, loading: authLoading } = useAuth()
 
-  // Load cart from localStorage on mount (guest) or from DB (logged-in)
+  // Load cart whenever auth state settles
   useEffect(() => {
-    const init = async () => {
-      if (didInit.current) return
-      didInit.current = true
+    // Wait until auth has finished resolving
+    if (authLoading) return
 
+    const init = async () => {
       const savedCart = localStorage.getItem('cart')
       const localItems = savedCart ? (() => {
         try { return JSON.parse(savedCart) } catch { return [] }
@@ -34,7 +33,7 @@ export const CartProvider = ({ children }) => {
       }
 
       try {
-        // Merge local cart into DB once, then trust DB
+        // Merge any local guest cart into DB, then trust DB
         if (Array.isArray(localItems) && localItems.length > 0) {
           await api.put('/cart', {
             items: localItems.map(i => ({ productId: i.productId, quantity: i.quantity }))
@@ -63,7 +62,7 @@ export const CartProvider = ({ children }) => {
     }
 
     init()
-  }, [isAuthenticated])
+  }, [isAuthenticated, authLoading])
 
   // Save cart to localStorage whenever it changes (guest only)
   useEffect(() => {

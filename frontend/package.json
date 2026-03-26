@@ -13,11 +13,13 @@
   "dependencies": {
     "@react-oauth/google": "^0.13.4",
     "axios": "^1.6.2",
+    "firebase": "^12.11.0",
     "qrcode.react": "^3.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.4.1",
-    "react-router-dom": "^6.20.1"
+    "react-router-dom": "^6.20.1",
+    "recharts": "^3.8.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

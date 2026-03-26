@@ -88,6 +88,24 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const googleLogin = async (credential) => {
+    try {
+      const res = await api.post('/users/google', { credential })
+      if (res.data.success && res.data.token) {
+        setAuthToken(res.data.token)
+        setUser(res.data.user)
+        toast.success('Signed in with Google!')
+        return { success: true }
+      } else {
+        throw new Error('Invalid response from server')
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || 'Google sign-in failed'
+      toast.error(message)
+      return { success: false, error: message }
+    }
+  }
+
   const login = async (email, password) => {
     try {
       const res = await api.post('/users/login', { email, password })
@@ -143,6 +161,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     register,
     login,
+    googleLogin,
     logout,
     updateProfile,
     isAuthenticated: !!user,

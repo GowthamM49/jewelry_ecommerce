@@ -12,7 +12,7 @@ const Cart = () => {
   const handleQuantityChange = (productId, newQuantity) => {
     if (newQuantity < 1) {
       removeFromCart(productId)
-      toast.success('Item removed from cart')
+      toast.success('Item removed')
     } else {
       updateQuantity(productId, newQuantity)
     }
@@ -86,7 +86,7 @@ const Cart = () => {
                       removeFromCart(item.productId)
                       toast.success('Item removed from cart')
                     }}
-                    className="text-red-600 hover:text-red-700 text-sm"
+                    className="text-red-500 hover:text-red-700 text-sm font-medium transition-colors"
                   >
                     Remove
                   </button>

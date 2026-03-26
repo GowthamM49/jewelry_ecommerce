@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import api from '../utils/api'
 import { ProductCardSkeleton } from '../components/Skeletons'
 import PageHeader from '../components/ui/PageHeader'
@@ -12,24 +12,11 @@ const Products = () => {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({
-    category: '',
     metal: '',
-    purity: '',
-    occasion: '',
-    style: '',
-    minWeight: '',
-    maxWeight: '',
     search: '',
     sort: 'newest'
   })
   const [pagination, setPagination] = useState({ page: 1, pages: 1 })
-  const [searchParams, setSearchParams] = useSearchParams()
-
-  useEffect(() => {
-    // Initialize filters from URL params
-    const category = searchParams.get('category') || ''
-    setFilters(prev => ({ ...prev, category }))
-  }, [searchParams])
 
   useEffect(() => {
     fetchProducts()
@@ -57,170 +44,27 @@ const Products = () => {
     setPagination(prev => ({ ...prev, page: 1 }))
   }
 
-  const categories = ['Rings', 'Necklaces', 'Earrings', 'Bracelets', 'Bangles', 'Pendants', 'Chains', 'Sets']
-  const metals = ['Gold', 'Silver', 'Platinum', 'Diamond']
-  const purities = ['22K', '18K', '14K', '24K', '925', '999']
-  const occasions = ['Bridal', 'Daily Wear', 'Festive', 'Office', 'Party', 'Casual']
-  const styles = ['Traditional', 'Minimal', 'Contemporary', 'Heritage', 'Statement']
-
   const clearFilters = () => {
     setFilters({
-      category: '',
       metal: '',
-      purity: '',
-      occasion: '',
-      style: '',
-      minWeight: '',
-      maxWeight: '',
       search: '',
-      sort: 'newest',
+      sort: 'newest'
     })
     setPagination(prev => ({ ...prev, page: 1 }))
   }
 
   const activeFilters = [
-    filters.category && { key: 'category', label: filters.category },
     filters.metal && { key: 'metal', label: filters.metal },
-    filters.purity && { key: 'purity', label: filters.purity },
-    filters.occasion && { key: 'occasion', label: filters.occasion },
-    filters.style && { key: 'style', label: filters.style },
-    filters.minWeight && { key: 'minWeight', label: `Min ${filters.minWeight}g` },
-    filters.maxWeight && { key: 'maxWeight', label: `Max ${filters.maxWeight}g` },
-    filters.search && { key: 'search', label: `“${filters.search}”` },
+    filters.search && { key: 'search', label: `"${filters.search}"` }
   ].filter(Boolean)
 
   return (
     <div className="container-page py-10">
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Filters Sidebar */}
-        <aside className="w-full md:w-72 flex-shrink-0">
-          <Card className="sticky top-20">
-            <div className="card-pad space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Filters</h2>
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  Clear
-                </Button>
-              </div>
-            
-            {/* Search */}
-            <Input
-              label="Search"
-              type="text"
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-              placeholder="Search products..."
-            />
-
-            {/* Category */}
-            <div>
-              <label className="label">Category</label>
-              <select
-                value={filters.category}
-                onChange={(e) => handleFilterChange('category', e.target.value)}
-                className="input-field"
-              >
-                <option value="">All Categories</option>
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Metal */}
-            <div>
-              <label className="label">Metal</label>
-              <select
-                value={filters.metal}
-                onChange={(e) => handleFilterChange('metal', e.target.value)}
-                className="input-field"
-              >
-                <option value="">All Metals</option>
-                {metals.map(metal => (
-                  <option key={metal} value={metal}>{metal}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Purity */}
-            <div>
-              <label className="label">Purity</label>
-              <select
-                value={filters.purity}
-                onChange={(e) => handleFilterChange('purity', e.target.value)}
-                className="input-field"
-              >
-                <option value="">All Purity</option>
-                {purities.map(purity => (
-                  <option key={purity} value={purity}>{purity}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Occasion */}
-            <div>
-              <label className="label">Occasion</label>
-              <select
-                value={filters.occasion}
-                onChange={(e) => handleFilterChange('occasion', e.target.value)}
-                className="input-field"
-              >
-                <option value="">Any</option>
-                {occasions.map(item => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Style */}
-            <div>
-              <label className="label">Style</label>
-              <select
-                value={filters.style}
-                onChange={(e) => handleFilterChange('style', e.target.value)}
-                className="input-field"
-              >
-                <option value="">Any</option>
-                {styles.map(item => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Weight range */}
-            <div>
-              <label className="label">Weight (grams)</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  placeholder="Min"
-                  value={filters.minWeight}
-                  onChange={(e) => handleFilterChange('minWeight', e.target.value)}
-                  className="input-field"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  placeholder="Max"
-                  value={filters.maxWeight}
-                  onChange={(e) => handleFilterChange('maxWeight', e.target.value)}
-                  className="input-field"
-                />
-              </div>
-            </div>
-            </div>
-          </Card>
-        </aside>
-
-        {/* Products Grid */}
-        <main className="flex-1">
+      <main>
           <PageHeader
             eyebrow="Premium Collection"
             title="Our Products"
-            subtitle="Discover premium jewelry curated by category, metal, and style."
+            subtitle="All jewelry products in one place, including Gold and Silver."
             right={
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-600">
@@ -243,6 +87,35 @@ const Products = () => {
             }
           />
 
+          <Card className="mb-6">
+            <div className="card-pad grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Input
+                label="Search"
+                type="text"
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                placeholder="Search products..."
+              />
+              <div>
+                <label className="label">Metal</label>
+                <select
+                  value={filters.metal}
+                  onChange={(e) => handleFilterChange('metal', e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">All (Gold + Silver + More)</option>
+                  <option value="Gold">Gold</option>
+                  <option value="Silver">Silver</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <Button variant="ghost" onClick={clearFilters} className="w-full md:w-auto">
+                  Clear filters
+                </Button>
+              </div>
+            </div>
+          </Card>
+
           {activeFilters.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-6">
               <span className="text-sm text-gray-600 mr-1">Active filters:</span>
@@ -253,7 +126,7 @@ const Products = () => {
                   className="badge-muted hover:bg-gray-200 transition-colors"
                   aria-label={`Remove filter ${f.label}`}
                 >
-                  {f.label} <span className="ml-1">×</span>
+                  {f.label} <span className="ml-1">x</span>
                 </button>
               ))}
               <Button variant="ghost" size="sm" onClick={clearFilters} className="ml-1">
@@ -303,10 +176,10 @@ const Products = () => {
                     <div className="p-4">
                       <h3 className="font-semibold mb-2 line-clamp-2">{product.name}</h3>
                       <p className="text-sm text-gray-600 mb-2">
-                        {product.metal} {product.purity} • {product.weight}g
+                        {product.metal} {product.purity} - {product.weight}g
                       </p>
                       <p className="text-xl font-bold text-gold-600">
-                        ₹{product.price?.toLocaleString() || '0'}
+                        Rs {product.price?.toLocaleString() || '0'}
                       </p>
                     </div>
                     </Card>
@@ -338,8 +211,7 @@ const Products = () => {
               )}
             </>
           )}
-        </main>
-      </div>
+      </main>
     </div>
   )
 }

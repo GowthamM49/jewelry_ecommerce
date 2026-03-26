@@ -1,102 +1,135 @@
 /**
- * Gold Rate Service - Fetches and manages gold rates
- * Supports multiple gold rate API providers
+ * Gold Rate Service - Fetches live gold rates for Indian market
+ *
+ * Method:
+ *  1. Fetch XAU/USD spot price from gold-api.com (free, no key)
+ *  2. Fetch USD/INR exchange rate from open.er-api.com (free, no key)
+ *  3. Convert: (XAU_USD / 31.1035) * USD_INR = spot 24K per gram in INR
+ *  4. Apply India import duty (15%) + GST (3%) = 18% → multiply by 1.18
+ *
+ * This matches Indian market rates (goodreturns.in / Chennai rates).
  */
+
+import https from 'https';
 
 /**
- * Fetch gold rates from external API
- * Currently uses a realistic simulation based on market trends
- * To use a real API, uncomment and configure one of the providers below
+ * Simple HTTPS GET helper — works on all Node versions (no fetch needed)
  */
-export const fetchGoldRateFromAPI = async () => {
-  try {
-    // Option 1: Use GoldAPI.io (requires API key)
-    // Uncomment and add GOLD_API_KEY to .env file
-    /*
-    if (process.env.GOLD_API_KEY) {
-      const response = await fetch(`https://api.goldapi.io/api/XAU/INR`, {
-        headers: {
-          'x-access-token': process.env.GOLD_API_KEY
+const httpsGet = (url, headers = {}) => {
+  return new Promise((resolve, reject) => {
+    const options = { headers };
+    https.get(url, options, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+        }
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error('Failed to parse JSON response'));
         }
       });
-      const data = await response.json();
-      const baseRate24K = data.price / 31.1035; // Convert from per ounce to per gram
-      return calculateKaratRates(baseRate24K);
-    }
-    */
-
-    // Option 2: Use Metals API (requires API key)
-    // Uncomment and add METALS_API_KEY to .env file
-    /*
-    if (process.env.METALS_API_KEY) {
-      const response = await fetch(`https://api.metals.live/v1/spot/gold`);
-      const data = await response.json();
-      const baseRate24K = (data.price * 74.5) / 31.1035; // Convert USD/oz to INR/gram
-      return calculateKaratRates(baseRate24K);
-    }
-    */
-
-    // Fallback: Realistic market-based simulation
-    // This simulates daily market fluctuations based on a base rate
-    // In production, replace with actual API integration
-    const baseRate24K = 6500; // Base 24K rate per gram in INR
-    
-    // Simulate realistic daily variation (±2% to ±5%)
-    const dailyVariation = (Math.random() * 0.06 - 0.03); // -3% to +3%
-    const current24KRate = baseRate24K * (1 + dailyVariation);
-    
-    // Add small random fluctuation for realism
-    const fluctuation = (Math.random() * 20 - 10); // ±10 rupees
-    
-    const final24KRate = Math.round((current24KRate + fluctuation) * 100) / 100;
-    
-    return calculateKaratRates(final24KRate);
-  } catch (error) {
-    console.error('Error fetching gold rates from API:', error);
-    // Return default rates on error
-    return calculateKaratRates(6500);
-  }
+    }).on('error', reject);
+  });
 };
 
 /**
  * Calculate rates for different karats based on 24K rate
- * Purity ratios: 24K = 100%, 22K = 91.67%, 18K = 75%, 14K = 58.33%
+ * Ratios calibrated to match goodreturns.in Indian market rates
  */
-const calculateKaratRates = (rate24K) => {
-  return {
-    '24K': Math.round(rate24K * 100) / 100,
-    '22K': Math.round((rate24K * 0.9167) * 100) / 100,
-    '18K': Math.round((rate24K * 0.75) * 100) / 100,
-    '14K': Math.round((rate24K * 0.5833) * 100) / 100
-  };
+const calculateKaratRates = (rate24K) => ({
+  '24K': Math.round(rate24K),
+  '22K': Math.round(rate24K * 0.9167),
+  '18K': Math.round(rate24K * 0.7648),
+  '14K': Math.round(rate24K * 0.5850)
+});
+
+/**
+ * Fetch gold (22K) and silver rates from free public APIs
+ * Returns: { '22K': number, 'Silver': number } in INR per gram
+ */
+export const fetchGoldRateFromAPI = async () => {
+  try {
+    // Step 1: Get XAU/USD (gold) and XAG/USD (silver) spot prices
+    const [goldData, silverData] = await Promise.all([
+      httpsGet('https://api.gold-api.com/price/XAU'),
+      httpsGet('https://api.gold-api.com/price/XAG')
+    ]);
+    if (!goldData.price)  throw new Error('gold-api.com returned no gold price');
+    if (!silverData.price) throw new Error('gold-api.com returned no silver price');
+
+    const xauUsd = goldData.price;
+    const xagUsd = silverData.price;
+
+    // Step 2: Get USD/INR exchange rate
+    const fxUrl = process.env.EXCHANGE_RATE_API_KEY
+      ? `https://v6.exchangerate-api.com/v6/${process.env.EXCHANGE_RATE_API_KEY}/latest/USD`
+      : 'https://open.er-api.com/v6/latest/USD';
+    const fxData = await httpsGet(fxUrl);
+    if (!fxData.rates?.INR) throw new Error('Exchange rate API returned no INR rate');
+    const usdInr = fxData.rates.INR;
+
+    // Step 3: Convert to INR per gram (1 troy oz = 31.1035 grams)
+    const spot24K = (xauUsd * usdInr) / 31.1035;
+
+    // Step 4: Apply India import duty (15%) + GST (3%) = 18% for gold
+    const indiaRate24K = spot24K * 1.18;
+    const indiaRate22K = Math.round(indiaRate24K * 0.9167);
+
+    // Silver: import duty 10% + GST 3% = 13%
+    const silverSpotPerGram = (xagUsd * usdInr) / 31.1035;
+    const indiaSilver = Math.round(silverSpotPerGram * 1.13);
+
+    const rates = {
+      '24K': Math.round(indiaRate24K),
+      '22K': indiaRate22K,
+      '18K': Math.round(indiaRate24K * 0.7648),
+      '14K': Math.round(indiaRate24K * 0.5850),
+      'Silver': indiaSilver
+    };
+
+    console.log(`✅ Rates fetched — 22K: ₹${rates['22K']}/g, Silver: ₹${rates['Silver']}/g`);
+    return rates;
+
+  } catch (error) {
+    console.error('⚠️  Live rate fetch failed, using fallback:', error.message);
+    const fallback24K = 15218;
+    return {
+      '24K': fallback24K,
+      '22K': Math.round(fallback24K * 0.9167),
+      '18K': Math.round(fallback24K * 0.7648),
+      '14K': Math.round(fallback24K * 0.5850),
+      'Silver': 96  // ~₹96/g fallback (goodreturns.in approx)
+    };
+  }
 };
+
+// Remove unused calculateKaratRates — kept only for reference
+// const calculateKaratRates = (rate24K) => { ... }
 
 /**
  * Get current active gold rates from database
  */
 export const getCurrentGoldRates = async (GoldRate) => {
   try {
-    // Check if GoldRate model exists and is connected
-    if (!GoldRate) {
-      throw new Error('GoldRate model not available');
-    }
+    if (!GoldRate) throw new Error('GoldRate model not available');
 
+    // Fetch up to 6 to cover all purities including Silver
     const rates = await GoldRate.find({ isActive: true })
       .sort({ date: -1 })
-      .limit(4); // One for each purity
-    
+      .limit(6);
+
     const rateMap = {};
     if (rates && rates.length > 0) {
       rates.forEach(rate => {
         rateMap[rate.purity] = rate.ratePerGram;
       });
     }
-    
-    // If no rates found, return empty object (caller will use defaults)
     return rateMap;
   } catch (error) {
     console.error('Error fetching gold rates from database:', error);
-    // Return empty object so caller can use defaults
     return {};
   }
 };
@@ -106,9 +139,7 @@ export const getCurrentGoldRates = async (GoldRate) => {
  */
 export const hasRatesUpdatedToday = async (GoldRate) => {
   try {
-    if (!GoldRate) {
-      return false;
-    }
+    if (!GoldRate) return false;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -117,12 +148,8 @@ export const hasRatesUpdatedToday = async (GoldRate) => {
 
     const todayRates = await GoldRate.findOne({
       isActive: true,
-      date: {
-        $gte: today,
-        $lt: tomorrow
-      }
+      date: { $gte: today, $lt: tomorrow }
     });
-
     return !!todayRates;
   } catch (error) {
     console.error('Error checking if rates updated today:', error);
@@ -132,20 +159,28 @@ export const hasRatesUpdatedToday = async (GoldRate) => {
 
 /**
  * Automatically update gold rates daily
- * This function fetches new rates and updates the database
+ * @param {object} options.forceIfManual - if true, fetch from API even if rates were updated today (but only if source is 'manual')
  */
-export const updateGoldRatesDaily = async (GoldRate) => {
+export const updateGoldRatesDaily = async (GoldRate, options = {}) => {
   try {
     if (!GoldRate) {
-      console.error('GoldRate model not available');
       return { success: false, message: 'GoldRate model not available' };
     }
 
-    // Check if rates have already been updated today
     const alreadyUpdated = await hasRatesUpdatedToday(GoldRate);
     if (alreadyUpdated) {
-      console.log('Gold rates already updated today. Skipping update.');
-      return { success: true, message: 'Rates already updated today', skipped: true };
+      // If forceIfManual, check if the existing rates are from manual/seed source
+      if (options.forceIfManual) {
+        const latestRate = await GoldRate.findOne({ isActive: true }).sort({ date: -1 });
+        if (latestRate && latestRate.source !== 'manual') {
+          console.log('Gold rates already updated today from API. Skipping update.');
+          return { success: true, message: 'Rates already updated today', skipped: true };
+        }
+        console.log('Rates exist but are from manual/seed source — fetching live rates from API...');
+      } else {
+        console.log('Gold rates already updated today. Skipping update.');
+        return { success: true, message: 'Rates already updated today', skipped: true };
+      }
     }
 
     console.log('Fetching latest gold rates from API...');
@@ -158,10 +193,10 @@ export const updateGoldRatesDaily = async (GoldRate) => {
     // Deactivate old rates
     await GoldRate.updateMany({ isActive: true }, { isActive: false });
 
-    // Create new rates
+    // Create new rates (save all including Silver)
     const newRates = [];
     for (const [purity, ratePerGram] of Object.entries(apiRates)) {
-      if (['22K', '18K', '14K', '24K'].includes(purity)) {
+      if (['24K', '22K', '18K', '14K', 'Silver'].includes(purity)) {
         const goldRate = await GoldRate.create({
           purity,
           ratePerGram,
@@ -173,9 +208,7 @@ export const updateGoldRatesDaily = async (GoldRate) => {
       }
     }
 
-    console.log(`✅ Gold rates updated successfully at ${new Date().toLocaleString()}`);
-    console.log('Updated rates:', apiRates);
-
+    console.log(`✅ Gold rates updated at ${new Date().toLocaleString()}:`, apiRates);
     return {
       success: true,
       message: 'Gold rates updated successfully',
@@ -191,4 +224,3 @@ export const updateGoldRatesDaily = async (GoldRate) => {
     };
   }
 };
-

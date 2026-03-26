@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import { CartProvider } from './context/CartContext'
+import { WishlistProvider } from './context/WishlistContext'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
 import Home from './pages/Home'
@@ -17,12 +18,16 @@ import Register from './pages/Register'
 import Profile from './pages/Profile'
 import Orders from './pages/Orders'
 import OrderSuccess from './pages/OrderSuccess'
+import OrderDetail from './pages/OrderDetail'
 import AdminDashboard from './pages/admin/Dashboard'
 import AdminProducts from './pages/admin/Products'
 import AdminOrders from './pages/admin/Orders'
 import AdminGoldRates from './pages/admin/GoldRates'
 import AdminReports from './pages/admin/Reports'
 import GoldRate from './pages/GoldRate'
+import Wishlist from './pages/Wishlist'
+import Gold from './pages/Gold'
+import Silver from './pages/Silver'
 import PrivateRoute from './components/PrivateRoute'
 import AdminRoute from './components/AdminRoute'
 import AdminLayout from './components/AdminLayout'
@@ -31,7 +36,8 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <Router>
+        <WishlistProvider>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <div className="min-h-screen flex flex-col">
             <Navbar />
             <main className="flex-grow">
@@ -43,6 +49,8 @@ function App() {
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/collections" element={<Collections />} />
                 <Route path="/gold-rate" element={<GoldRate />} />
+                <Route path="/gold" element={<Gold />} />
+                <Route path="/silver" element={<Silver />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
@@ -66,6 +74,18 @@ function App() {
                 <Route path="/order-success/:id" element={
                   <PrivateRoute>
                     <OrderSuccess />
+                  </PrivateRoute>
+                } />
+
+                <Route path="/orders/:id" element={
+                  <PrivateRoute>
+                    <OrderDetail />
+                  </PrivateRoute>
+                } />
+
+                <Route path="/wishlist" element={
+                  <PrivateRoute>
+                    <Wishlist />
                   </PrivateRoute>
                 } />
                 
@@ -110,6 +130,7 @@ function App() {
             <Toaster position="top-right" />
           </div>
         </Router>
+        </WishlistProvider>
       </CartProvider>
     </AuthProvider>
   )

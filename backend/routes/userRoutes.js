@@ -1,8 +1,23 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import jwt from 'jsonwebtoken';
+import admin from 'firebase-admin';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
+
+// Lazy Firebase Admin init — called inside route so dotenv is already loaded
+const getFirebaseAdmin = () => {
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+      })
+    });
+  }
+  return admin;
+};
 
 const router = express.Router();
 
@@ -114,6 +129,47 @@ router.post('/login', [
         email: user.email,
         role: user.role
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   POST /api/users/google
+// @desc    Firebase Google OAuth login / register
+// @access  Public
+router.post('/google', async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ message: 'Firebase ID token is required' });
+
+    // Verify Firebase ID token
+    const decoded = await getFirebaseAdmin().auth().verifyIdToken(credential);
+    const { uid: googleId, email, name } = decoded;
+
+    // Find existing user by googleId or email
+    let user = await User.findOne({ $or: [{ googleId }, { email }] });
+
+    if (user) {
+      // Link googleId if they previously registered with email/password
+      if (!user.googleId) {
+        user.googleId = googleId;
+        await user.save();
+      }
+    } else {
+      // New user — create account (no password needed)
+      user = await User.create({ name, email, googleId, role: 'customer' });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({ message: 'Account is inactive' });
+    }
+
+    const token = generateToken(user._id);
+    res.json({
+      success: true,
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role }
     });
   } catch (error) {
     next(error);

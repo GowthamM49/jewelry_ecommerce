@@ -92,11 +92,19 @@ const Orders = () => {
                     {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                   </span>
                   <Button
+                    as={Link}
+                    to={`/orders/${order._id}`}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    View Order
+                  </Button>
+                  <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => downloadInvoice(order._id)}
                   >
-                    Download Invoice
+                    Invoice
                   </Button>
                 </div>
               </div>
